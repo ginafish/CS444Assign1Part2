@@ -91,11 +91,11 @@ Notes: 		Uses global variable "system_type"
 **************************************************************************/
 int RNG(int lower, int upper){
 	int number;
-	if (system_type)
+	if (system_type)	//iff 32 bit, use x86 ASM
 		__asm__ __volatile__("rdrand %0":"=r"(number));
 	else
-		number = (int)genrand_int32(); //Mersenne Twister
-	abs(number);		// convert to positive number
+		number = (int)genrand_int32(); //iff 64 bit, use Mersenne Twister
+	abs(number);		// convert randomly generated number to positive number
 	// check for out of bounds
 	if (number < lower)
 		number = lower; 
