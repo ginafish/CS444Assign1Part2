@@ -37,6 +37,7 @@ mutatrix -> genrand_int32() - https://github.com/ekg/mutatrix/blob/master/mt1993
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <semaphore.h>
 #include "mt19937ar.h"
 
 int system_type = 0;
@@ -94,22 +95,41 @@ int RNG(int lower, int upper){
 	if (system_type)	//iff 32 bit, use x86 ASM
 		__asm__ __volatile__("rdrand %0":"=r"(number));
 	else
+
+		number = (int)genrand_int32(); //iff 64 bit, use Mersenne Twister
+	
+
 		number = (int)genrand_int32(); //iff 64 bit, use Mersenne Twister
 	abs(number);		// convert randomly generated number to positive number
+
 	// check for out of bounds
+	number = number % upper;
+	
+	if (number < 0 )
+		number = number * -1;
 	if (number < lower)
-		number = lower; 
-	if (number > upper)
-		number = upper;
-		
+		number = number + lower;
 	return number;
 }
 
 main(){
 	pthread_t consumer1, consumer2;
 	pthread_t producer1, producer2;
-	
+	/* The mutex lock */
+	pthread_mutex_t mutex;
+
+	/* the semaphores */
+	sem_t full, empty;
+
+	/* the buffer */
+	struct DATA buffer[32];
+
+	/* buffer counter */
+	int counter;
+	int i;
 	system_check(); // sets global variable depending on type
+	
+	
 	
 	
 }
