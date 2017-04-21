@@ -1,14 +1,14 @@
 /****************************
 * Brandon Thenell | Gina Phipps | Nawwaf Almutairi
 * CS 444 - Concurrency 1 
+* Group 13-05
+****************************/
 
-********************************/
-
-/****References*********
+/****References**************
 system_check() -> 0x40000000 - http://stackoverflow.com/questions/9994275/anything-specific-about-the-addresses-0x40000000-0x80000000-and-0xbf000000
 mutatrix -> genrand_int32() - https://github.com/ekg/mutatrix/blob/master/mt19937ar.h
 
-*************************/
+****************************/
 
 //delete after fulfilled
 /************REQUIREMENTS**********************************************************************************************
@@ -43,8 +43,8 @@ int system_type = 0;
 
 
 struct DATA{
-	int number_value;
-	int wait_length;
+	int number_value; //gets random value from RNG
+	int wait_length; //gets random value from RNG
 	
 };
 
@@ -94,7 +94,7 @@ int RNG(int lower, int upper){
 	if (system_type)
 		__asm__ __volatile__("rdrand %0":"=r"(number));
 	else
-		number = (int)genrand_int32();
+		number = (int)genrand_int32(); //Mersenne Twister
 	abs(number);		// convert to positive number
 	// check for out of bounds
 	if (number < lower)
