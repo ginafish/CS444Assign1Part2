@@ -8,6 +8,8 @@
 system_check() -> 0x40000000 - http://stackoverflow.com/questions/9994275/anything-specific-about-the-addresses-0x40000000-0x80000000-and-0xbf000000
 mutatrix -> genrand_int32() - https://github.com/ekg/mutatrix/blob/master/mt19937ar.h
 qemu flags - http://download.qemu.org/qemu-doc.html#index-_002dnet
+pthread_cond_(X) -> conditionals - https://computing.llnl.gov/tutorials/pthreads/
+
 ****************************/
 
 //delete after fulfilled
@@ -114,8 +116,9 @@ void *producer(void *param) {
      
     struct DATA product;
 	product.number_value = RNG(0,1000);
-	product.wait_length = RNG(3,7);
-	
+	product.wait_length = RNG(2,9);
+	/* sleep for designated rand sleep time before producting again */
+	sleep(RNG(3,7));
 
     /* Lock */
     pthread_mutex_lock(&mutex);
@@ -131,8 +134,8 @@ void *producer(void *param) {
 		pthread_cond_broadcast(&empty);
 	/* release the mutex lock */
 	pthread_mutex_unlock(&mutex);
-	/* sleep for designated rand sleep time before producting again */
-	sleep(RNG(2,9));
+	
+	
 	
    }
 }
@@ -192,6 +195,7 @@ int main(int argc, char* argv[]){
 		printf("Invalid arguments. Format:  ./concurrency1 <positive number of producers> <positive number of consumers>\n");
 		exit(1);
 	}
+	printf("\nFirst values appear after a few seconds, please be patient.\n Values become more random as program progresses.\n");
 	system_check(); // sets global variable depending on type
 	num_producers = atoi(argv[1]);
 	num_consumers = atoi(argv[2]);
