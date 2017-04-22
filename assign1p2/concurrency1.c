@@ -40,7 +40,7 @@ mutatrix -> genrand_int32() - https://github.com/ekg/mutatrix/blob/master/mt1993
 #include <semaphore.h>
 #include "mt19937ar.h"
 
-int system_type = 0;
+int system_type = 0, counter;
 
 
 struct DATA{
@@ -49,6 +49,20 @@ struct DATA{
 	
 };
 
+
+/* The mutex lock */
+pthread_mutex_t mutex;
+
+/* the semaphores */
+sem_t full, empty;
+
+/* the buffer */
+struct DATA buffer[32];
+
+pthread_attr_t attr; //Set of thread attributes
+
+void *producer(void *param); /* the producer thread */
+void *consumer(void *param); /* the consumer thread */
 
 /**************************************************************************
 
@@ -77,6 +91,83 @@ void system_check(){
 		system_type = 0;
 	
 }
+
+/* Add an item to the buffer */
+int insert_item(int item) {
+   /* When the buffer is not full add the item
+      and increment the counter*/
+   if(counter < 32) {
+      buffer[counter].number_value = item;
+      counter++;
+      return 0;
+   }
+   else { /* Error the buffer is full */
+      return -1;
+   }
+}
+
+/* Remove an item from the buffer */
+int remove_item(int *item) {
+   /* When the buffer is not empty remove the item
+      and decrement the counter */
+   if(counter > 0) {
+      *item = buffer[(counter-1)].number_value;
+      counter--;
+      return 0;
+   }
+   else { /* Error buffer empty */
+      return -1;
+   }
+}
+
+void initializeData() {
+
+   /* Create the mutex lock */
+   pthread_mutex_init(&mutex, NULL);
+
+   /* Create the full semaphore and initialize to 0 */
+   //sem_init(&full, 0, 0);
+
+   /* Create the empty semaphore and initialize to BUFFER_SIZE */
+   //sem_init(&empty, 0, 32);
+
+   /* Get the default attributes */
+   pthread_attr_init(&attr);
+
+   /* init buffer */
+   counter = 0;
+}
+
+/* Producer Thread */
+void *producer(void *param) {
+   int item;
+
+   while(1) {
+      /* sleep for a random period of time */
+      sleep(10);
+
+      /* generate a random number */
+      //item = rand();
+
+      /* acquire the empty lock */
+      //sem_wait(&empty);
+      /* acquire the mutex lock */
+      pthread_mutex_lock(&mutex);
+
+      if(insert_item(item)) {
+         fprintf(stderr, " Producer report error condition\n");
+      }
+      else {
+         printf("producer produced %d\n", item);
+      }
+      /* release the mutex lock */
+      pthread_mutex_unlock(&mutex);
+      /* signal full */
+      //sem_post(&full);
+   }
+}
+
+
 /**************************************************************************
 
 Name: 		int RNG(int lower, int upper)
@@ -99,9 +190,6 @@ int RNG(int lower, int upper){
 		number = (int)genrand_int32(); //iff 64 bit, use Mersenne Twister
 	
 
-		number = (int)genrand_int32(); //iff 64 bit, use Mersenne Twister
-	abs(number);		// convert randomly generated number to positive number
-
 	// check for out of bounds
 	number = number % upper;
 	
@@ -115,14 +203,7 @@ int RNG(int lower, int upper){
 main(){
 	pthread_t consumer1, consumer2;
 	pthread_t producer1, producer2;
-	/* The mutex lock */
-	pthread_mutex_t mutex;
 
-	/* the semaphores */
-	sem_t full, empty;
-
-	/* the buffer */
-	struct DATA buffer[32];
 
 	/* buffer counter */
 	int counter;
@@ -133,3 +214,4 @@ main(){
 	
 	
 }
+
