@@ -64,6 +64,7 @@ pthread_cond_t full;
 
 void *producer(void *param); /* the producer thread */
 void *consumer(void *param); /* the consumer thread */
+int RNG(int,int);
 
 /**************************************************************************
 Name: 		void system_check()

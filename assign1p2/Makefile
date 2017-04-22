@@ -1,4 +1,4 @@
 main: concurrency1.c
-	gcc concurrency1.c
+	gcc -pthread concurrency1.c -o concurrency1 
 clean:
-	rm a.out
+	rm -f concurrency1
