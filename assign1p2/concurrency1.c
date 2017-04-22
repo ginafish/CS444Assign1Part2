@@ -204,7 +204,7 @@ int main(int argc, char* argv[]){
 	pthread_t producers_array[num_producers];
 	initialize_data();
 	/* Fill up pthread arrays */
-	for(i = 0; i < num_consumers; i++){
+	for(i = 0; i < num_producers; i++){
 		pthread_create(&producers_array[i], NULL, producer, NULL);
 	}
 	for(i = 0; i < num_consumers; i++){
