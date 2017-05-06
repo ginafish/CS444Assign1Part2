@@ -5,6 +5,14 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 
+//notes:
+//need buffer of requests
+//if scanner is going up, honors quests from low to high until reaches end and then
+//switch directions
+//if scanner is going down, honors requests from high to low until reaches end, and then
+//switch directions
+
+
 //holds queue
 struct look_data {
 	struct list_head queue;
@@ -29,7 +37,7 @@ static int look_dispatch(struct request_queue *q, int force) {
 	return 0;
 }
 
-//adds request to end of queue
+//adds request to end of queue, looks like this is what we edit? or not?
 static void look_add_request(struct request_queue *q, struct request *rq) {
 	struct look_data *nd = q->elevator->elevator_data;
 	list_add_tail(&rq->queuelist, &nd->queue);
@@ -80,7 +88,7 @@ static int look_init_queue(struct request_queue *q, struct elevator_type *e) {
 	return 0;
 }
 
-//replaces working queue with elevator queue?
+//replaces working/current queue with elevator queue?
 static void look_exit_queue(struct elevator_queue *e) {
 	struct look_data *nd = e->elevator_data;
 	
