@@ -5,19 +5,22 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 
+//holds queue
 struct look_data {
 	struct list_head queue;
 }
 
-static void look_merged_requests(struct request queue *q, struct request *rq, struct request *next) {
+//removes the queuelist that is next's head, and then reinitialize it, apparently?
+static void look_merged_requests(struct request_queue *q, struct request *rq, struct request *next) {
 	list_del_init(&next->queuelist);
 }
 
+//not sure exactly what it's doing
 static int look_dispatch(struct request_queue *q, int force) {
 	struct look_data *nd = q->elevator->elevator_data;
 	
 	if(!list_empty(&nd->queue)){
-		sturct request *rq;
+		struct request *rq;
 		rq = list_entry(nd->queue.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
@@ -26,21 +29,24 @@ static int look_dispatch(struct request_queue *q, int force) {
 	return 0;
 }
 
+//adds request to end of queue
 static void look_add_request(struct request_queue *q, struct request *rq) {
 	struct look_data *nd = q->elevator->elevator_data;
 	list_add_tail(&rq->queuelist, &nd->queue);
 }
 
-static struct request * look_former_request(struct request_queue *q, struct requtest *rq) {
+//if the previous request in *rq is the new request? return null
+static struct request * look_former_request(struct request_queue *q, struct request *rq) {
 	struct look_data *nd = q->elevator->elevator_data;
 	
-	if(rq -> queuelist.prev == &nd->queue) {
+	if(rq->queuelist.prev == &nd->queue) {
 		return null;
 	}
 	return list_entry(rq->queuelist.prev, struct request, queuelist);
 }
 
-static struct request * look_latter_request(struct reqeust_queue *q, struct request *rq) {
+//reverse of the previous function?
+static struct request * look_latter_request(struct request_queue *q, struct request *rq) {
 	struct look_data *nd = q->elevator->elevator_data;
 	if(rq->queuelist.next == &nd->queue) {
 		return NULL;
@@ -48,6 +54,7 @@ static struct request * look_latter_request(struct reqeust_queue *q, struct requ
 	return list_entry(rq->queuelist.next, struct request, queuelist);
 }
 
+//initializes the queue
 static int look_init_queue(struct request_queue *q, struct elevator_type *e) {
 	struct look_data *nd;
 	struct elevator_queue *eq;
@@ -67,12 +74,13 @@ static int look_init_queue(struct request_queue *q, struct elevator_type *e) {
 	
 	INIT_LIST_HEAD(&nd->queue);
 	
-	spin_lock_irq(q->queue_lock);
+	spin_lock_irq(q->queue_lock);	//locks memory from use to keep from having race conditions
 	q->elevator = eq;
 	spin_unlock_irq(q->queue->lock);
 	return 0;
 }
 
+//replaces working queue with elevator queue?
 static void look_exit_queue(struct elevator_queue *e) {
 	struct look_data *nd = e->elevator_data;
 	
@@ -80,6 +88,7 @@ static void look_exit_queue(struct elevator_queue *e) {
 	kfree(nd);
 }
 
+//some kind of struct that is binding stuff in the elevator to functions in here
 static struct elevator_type elevator_look = {
 	.ops = {
 		.elevator_merge_req_fn		= look_merged_requests;
