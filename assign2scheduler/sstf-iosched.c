@@ -37,7 +37,7 @@ static int sstf_dispatch(struct request_queue *q, int force) {
 	return 0;
 }
 
-//adds request to end of queue, sstfs like this is what we edit? or not?
+//adds request to the correct location of the queue
 static void sstf_add_request(struct request_queue *q, struct request *rq) {
 	struct sstf_data *nd = q->elevator->elevator_data;
 	list_add_tail(&rq->queuelist, &nd->queue);
@@ -112,7 +112,7 @@ static struct elevator_type elevator_sstf = {
 };
 
 static int __init sstf_init(void) {
-	elv_unregister(&elevator_sstf);
+	elv_register(&elevator_sstf);
 }
 
 static void __exit sstf_exit(void) {
