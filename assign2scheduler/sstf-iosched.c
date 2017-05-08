@@ -14,18 +14,18 @@
 
 
 //holds queue
-struct look_data {
+struct sstf_data {
 	struct list_head queue;
 }
 
 //removes the queuelist that is next's head, and then reinitialize it, apparently?
-static void look_merged_requests(struct request_queue *q, struct request *rq, struct request *next) {
+static void sstf_merged_requests(struct request_queue *q, struct request *rq, struct request *next) {
 	list_del_init(&next->queuelist);
 }
 
 //not sure exactly what it's doing
-static int look_dispatch(struct request_queue *q, int force) {
-	struct look_data *nd = q->elevator->elevator_data;
+static int sstf_dispatch(struct request_queue *q, int force) {
+	struct sstf_data *nd = q->elevator->elevator_data;
 	
 	if(!list_empty(&nd->queue)){
 		struct request *rq;
@@ -37,15 +37,15 @@ static int look_dispatch(struct request_queue *q, int force) {
 	return 0;
 }
 
-//adds request to end of queue, looks like this is what we edit? or not?
-static void look_add_request(struct request_queue *q, struct request *rq) {
-	struct look_data *nd = q->elevator->elevator_data;
+//adds request to end of queue, sstfs like this is what we edit? or not?
+static void sstf_add_request(struct request_queue *q, struct request *rq) {
+	struct sstf_data *nd = q->elevator->elevator_data;
 	list_add_tail(&rq->queuelist, &nd->queue);
 }
 
 //if the previous request in *rq is the new request? return null
-static struct request * look_former_request(struct request_queue *q, struct request *rq) {
-	struct look_data *nd = q->elevator->elevator_data;
+static struct request * sstf_former_request(struct request_queue *q, struct request *rq) {
+	struct sstf_data *nd = q->elevator->elevator_data;
 	
 	if(rq->queuelist.prev == &nd->queue) {
 		return null;
@@ -54,8 +54,8 @@ static struct request * look_former_request(struct request_queue *q, struct requ
 }
 
 //reverse of the previous function?
-static struct request * look_latter_request(struct request_queue *q, struct request *rq) {
-	struct look_data *nd = q->elevator->elevator_data;
+static struct request * sstf_latter_request(struct request_queue *q, struct request *rq) {
+	struct sstf_data *nd = q->elevator->elevator_data;
 	if(rq->queuelist.next == &nd->queue) {
 		return NULL;
 	}
@@ -63,8 +63,8 @@ static struct request * look_latter_request(struct request_queue *q, struct requ
 }
 
 //initializes the queue
-static int look_init_queue(struct request_queue *q, struct elevator_type *e) {
-	struct look_data *nd;
+static int sstf_init_queue(struct request_queue *q, struct elevator_type *e) {
+	struct sstf_data *nd;
 	struct elevator_queue *eq;
 	
 	eq = elevator_alloc(q, e);
@@ -89,39 +89,39 @@ static int look_init_queue(struct request_queue *q, struct elevator_type *e) {
 }
 
 //replaces working/current queue with elevator queue?
-static void look_exit_queue(struct elevator_queue *e) {
-	struct look_data *nd = e->elevator_data;
+static void sstf_exit_queue(struct elevator_queue *e) {
+	struct sstf_data *nd = e->elevator_data;
 	
 	BUG_ON(!list_empty(&nd->queue));
 	kfree(nd);
 }
 
 //some kind of struct that is binding stuff in the elevator to functions in here
-static struct elevator_type elevator_look = {
+static struct elevator_type elevator_sstf = {
 	.ops = {
-		.elevator_merge_req_fn		= look_merged_requests;
-		.elevator_dispatch_fn		= look_dispatch,
-		.elevator_add_req_fn		= look_add_request,
-		.elevator_former_req_fn		= look_former_request,
-		.elevator_latter_req_fn		= look_latter_request,
-		.elevator_init_fn			= look_init_queue,
-		.elevator_exit_fn			= look_exit_queue,
+		.elevator_merge_req_fn		= sstf_merged_requests;
+		.elevator_dispatch_fn		= sstf_dispatch,
+		.elevator_add_req_fn		= sstf_add_request,
+		.elevator_former_req_fn		= sstf_former_request,
+		.elevator_latter_req_fn		= sstf_latter_request,
+		.elevator_init_fn			= sstf_init_queue,
+		.elevator_exit_fn			= sstf_exit_queue,
 	},
-	.elevator_name = "look",
+	.elevator_name = "sstf",
 	.elevator_owner = THIS_MODULE,
 };
 
-static int __init look_init(void) {
-	elv_unregister(&elevator_look);
+static int __init sstf_init(void) {
+	elv_unregister(&elevator_sstf);
 }
 
-static void __exit look_exit(void) {
-	elv_unregister(&elevator_look);
+static void __exit sstf_exit(void) {
+	elv_unregister(&elevator_sstf);
 }
 
-module_init(look_init);
-module_exit(look_exit);
+module_init(sstf_init);
+module_exit(sstf_exit);
 
 MODULE_AUTHOR("GinaPhipps_NawwafAlmutairi_BrandonThenell");
 MODULE_LICENSE("");
-MODULE_DESCRIPTION("Look IO scheduler");
+MODULE_DESCRIPTION("sstf IO scheduler");
