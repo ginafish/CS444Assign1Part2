@@ -62,7 +62,7 @@ static void sstf_add_request(struct request_queue *q, struct request *rq)
 		// Add request to the correct location in the queue
         list_add(&rq->queuelist, &prev_rq->queuelist);
     }
-
+    printk("Value: %llu\n", (unsigned long long) rq->__sector);
 }
 
 static struct request * sstf_former_request(struct request_queue *q, struct request *rq)
