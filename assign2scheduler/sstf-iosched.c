@@ -40,7 +40,31 @@ static int sstf_dispatch(struct request_queue *q, int force) {
 //adds request to the correct location of the queue
 static void sstf_add_request(struct request_queue *q, struct request *rq) {
 	struct sstf_data *nd = q->elevator->elevator_data;
-	list_add_tail(&rq->queuelist, &nd->queue);
+	struct request *next_req, *prev_req;
+	//list_add_tail(&rq->queuelist, &nd->queue);
+
+	 if (list_empty(&nd->queue)) {
+		printk("add_request to an empty list\n");
+
+		// If empty list then just add the request
+        list_add(&rq->queuelist, &nd->queue);
+    }else{
+    	printk("add_request to non empty list\n");
+    	
+    	// get the value for the next and prev
+    	next_req = list_entry(nd->queue.next, struct request, queuelist);
+        prev_req = list_entry(nd->queue.prev, struct request, queuelist);
+
+        // go through the list until you find the right location
+        while (blk_rq_pos(rq) < blk_rq_pos(next_req)) {
+            next_req = list_entry(next_req->queuelist.next, struct request, queuelist);
+            prev_req = list_entry(prev_req->queuelist.prev, struct request, queuelist);
+        }
+
+        // add the request to the list
+        list_add(&rq->queuelist, &prev_rq->queuelist);
+
+    }
 }
 
 //if the previous request in *rq is the new request? return null
