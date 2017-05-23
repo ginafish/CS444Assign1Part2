@@ -19,6 +19,8 @@
 #include <linux/blkdev.h>
 #include <linux/hdreg.h>
 
+#include <linux/crypto.h>
+
 MODULE_LICENSE("Dual BSD/GPL");
 static char *Version = "1.4";
 
@@ -63,8 +65,24 @@ static void sbd_transfer(struct sbd_device *dev, sector_t sector,
 		return;
 	}
 	if (write)
+		//encrypt buffer here?
+		/* Functions:
+		 *		int crypto_register_alg(struct crypto_alg *alg);
+		 *		int crypto_register_algs(struct crypto_alg *algs, int count); (specifies that crypto_alg is an array of count size)
+		 * code < 0 = error
+		 * 
+		 * 
+		 * .cia_setkey() -> cia_encrypt()
+		 */
+	
 		memcpy(dev->data + offset, buffer, nbytes);
 	else
+		//decrypt buffer here?
+		/* Functions:
+		 *		int crypto_unregister_alg(struct crypto_alg *alg);
+		 *		int crypto_unregister_algs(struct crypto_alg *algs, int count);
+		 * code < 0 = error
+		 */
 		memcpy(buffer, dev->data + offset, nbytes);
 }
 
@@ -152,6 +170,13 @@ static int __init sbd_init(void) {
 	set_capacity(Device.gd, nsectors);
 	Device.gd->queue = Queue;
 	add_disk(Device.gd);
+	
+	
+	/* Initialize Crypto added here */
+	unsigned char key[32];
+	get_random_bytes(&key, 32);
+	
+	
 
 	return 0;
 
