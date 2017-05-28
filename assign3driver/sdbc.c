@@ -1,5 +1,7 @@
 /*
  * A sample, extra-simple block driver. Updated for kernel 2.6.31.
+ * 
+ * Updated 5/17 by other party to add encryption to requests.
  *
  * (C) 2003 Eklektix, Inc.
  * (C) 2010 Pat Patterson <pat at superpat dot com>
@@ -30,6 +32,10 @@ static int logical_block_size = 512;
 module_param(logical_block_size, int, 0);
 static int nsectors = 1024; /* How big the drive is */
 module_param(nsectors, int, 0);
+
+static unsigned char aes_key = "666AE498AA62EDD1270B95CF05738766";
+static int aes_key_len = 32;
+struct crypto_cipher *tfm;
 
 /*
  * We can tweak our hardware sector size, but the kernel talks to us
@@ -133,6 +139,8 @@ static struct block_device_operations sbd_ops = {
 };
 
 static int __init sbd_init(void) {
+	printk("sdbc.c: __init sdb_init starting\n");
+	
 	/*
 	 * Set up our internal device.
 	 */
@@ -171,10 +179,10 @@ static int __init sbd_init(void) {
 	Device.gd->queue = Queue;
 	add_disk(Device.gd);
 	
+	printk("sdbc.c: __init sbd_init starting crypto setup\n");
 	
-	/* Initialize Crypto added here */
-	unsigned char key[32];
-	get_random_bytes(&key, 32);
+	/* Alloc single block cipher */
+	tfm = crypto_alloc_cipher("aes", 0, 0);
 	
 	
 
