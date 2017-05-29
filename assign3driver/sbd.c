@@ -1,5 +1,7 @@
 /*
  * A sample, extra-simple block driver. Updated for kernel 2.6.31.
+ * 
+ * Updated 5/17 by other party to add encryption to requests.
  *
  * (C) 2003 Eklektix, Inc.
  * (C) 2010 Pat Patterson <pat at superpat dot com>
@@ -14,31 +16,26 @@
 #include <linux/fs.h>     /* everything... */
 #include <linux/errno.h>  /* error codes */
 #include <linux/types.h>  /* size_t */
-#include <linux/vmalloc.h>/* vmalloc */
+#include <linux/vmalloc.h>
 #include <linux/genhd.h>
 #include <linux/blkdev.h>
-#include <linux/hdreg.h>  /* HDIO_GETGEO partitioning*/
-#include <linux/slab.h>	  /* kmmalloc */
-#include <linux/fcntl.h>  /* File I/O */
-#include <linux/sched.h>
-#include <linux/timer.h>
-#include <linux/kdev_t.h>
-#include <linux/buffer_head.h>
-#include <linux/bio.h>
-#include <linux/crypto.h>
-#include <linux/scatterlist.h>
+#include <linux/hdreg.h>
 
-MODULE_LICENSE("GPL");
+#include <linux/crypto.h>
+
+MODULE_LICENSE("Dual BSD/GPL");
+static char *Version = "1.4";
 
 static int major_num = 0;
 module_param(major_num, int, 0);
-
 static int logical_block_size = 512;
 module_param(logical_block_size, int, 0);
-
-/* Drive size */
-static int nsectors = 1024;
+static int nsectors = 1024; /* How big the drive is */
 module_param(nsectors, int, 0);
+
+static u8 aes_key = "11111111111111111111111111111111";
+static int aes_key_len = 32;
+struct crypto_cipher *tfm;
 
 /*
  * We can tweak our hardware sector size, but the kernel talks to us
@@ -52,131 +49,76 @@ module_param(nsectors, int, 0);
 static struct request_queue *Queue;
 
 /*
- * Device data
+ * The internal representation of our device.
  */
 static struct sbd_device {
-	unsigned long size;		/* Device size in sectors*/
-	spinlock_t lock;		/* Mutex */
-	u8 *data;				/* Data Array */
-	struct gendisk *gd; 	/* Gendisk struct */
+	unsigned long size;
+	spinlock_t lock;
+	u8 *data;
+	struct gendisk *gd;
 } Device;
-
-/* ***Note that the crypto key must be 16 characters long */
-struct crypto_cipher *tfm;
-static char *key = "1234123412341234";
-module_param(key, charp, 0644);
-static int keylen = 16;
-module_param(keylen, int, 0644);
 
 /*
  * Handle an I/O request.
- * param nsect - The number of sectors for reading and writing
- * param sector - Starting sector
  */
 static void sbd_transfer(struct sbd_device *dev, sector_t sector,
 		unsigned long nsect, char *buffer, int write) {
 	unsigned long offset = sector * logical_block_size;
 	unsigned long nbytes = nsect * logical_block_size;
-	u8 *destination;
-	u8 *source;
-
-	if (write)
-		printk("WRITE \n");
-	else
-		printk("READ\n");
 
 	if ((offset + nbytes) > dev->size) {
+		printk (KERN_NOTICE "sbd: Beyond-end write (%ld %ld)\n", offset, nbytes);
 		return;
 	}
-
-    crypto_cipher_setkey(tfm, key, keylen);
-
-
-	int i;
-
-	/*
-	 * Essentially we are transferring (encrypting/decrypting) data one block at
-	 * a time until we reach a specific length (n bytes)
-	 * If we are writing, then we are transferring data from the block to the device
-	 * If we are reading, then we are transferring data from the device to the block
-	 */
-
+	
+	if(crypto_cipher_setkey(tfm, &aes_key, aes_key_len) != 0) {
+		printk("sbdc.c: sbd_transfer setkey failed.\n");
+	}
+	
 	if (write) {
-
-		destination = dev->data + offset;
-		source = buffer;
-
-		for (i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
-			/* Use crypto cipher handler and tfm to encrypt data one block at a time*/
-			crypto_cipher_encrypt_one(
-					tfm,	 				/* Cipher handler */
-					dev->data + offset + i,	/* Destination */
-					buffer + i				/* Source */
-					);
+		printk("sdbc.c: sbd_transfer starting an encrypted write.\n");
+		printk("sdbc.c: sbd_transfer unencrypted message:\n\t%s", buffer);
+		int i;
+		for(i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
+			crypto_cipher_encrypt_one(tfm, dev->data + offset + i, buffer + i);
 		}
-
-		for (i = 0; i < 100; i++) {
-			printk("%u", (unsigned) *destination++);
-		}
-
-		for (i = 0; i < 100; i++) {
-			printk("%u", (unsigned) *source++);
-		}
-		printk("\n");
+		printk("sdbc.c: sbd_transfer encrypted message:\n\t%s", dev->data);
+		
+	
+		//memcpy(dev->data + offset, buffer, nbytes);
 	}
 	else {
-
-		destination = dev->data + offset;
-		source = buffer;
-
-		for (i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
-			/* Use crypto cipher handler and tfm to decrypt data one block at a time*/
-			crypto_cipher_decrypt_one(
-					tfm,					/* Cipher handler */
-					buffer + i,				/* Destination */
-					dev->data + offset + i	/* Source */
-					);
+		printk("sdbc.c: sbd_transfer starting an encrypted read.\n");
+		printk("sdbc.c: sbd_transfer encrypted message:\n\t%s", dev->data);
+		int i;
+		for(i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
+			crypto_cipher_dencrypt_one(tfm, buffer + i, dev->data + offset + i);
 		}
-
-		for (i = 0; i < 100; i++) {
-			printk("%u", (unsigned) *destination++);
-		}
-
-		for (i = 0; i < 100; i++) {
-			printk("%u", (unsigned) *source++);
-		}
-		printk("\n");
+		printk("sdbc.c: sbd_transfer decrypted message:\n\t%s", buffer);
+		
+		
+		//memcpy(buffer, dev->data + offset, nbytes);
 	}
-
 }
 
 static void sbd_request(struct request_queue *q) {
 	struct request *req;
 
-	/* Gets request from top of queue */
 	req = blk_fetch_request(q);
-
-	/* Iterate through queue */
 	while (req != NULL) {
-
-		/* Skip non-command requests */
+		// blk_fs_request() was removed in 2.6.36 - many thanks to
+		// Christian Paro for the heads up and fix...
+		//if (!blk_fs_request(req)) {
 		if (req == NULL || (req->cmd_type != REQ_TYPE_FS)) {
+			printk (KERN_NOTICE "Skip non-CMD request\n");
 			__blk_end_request_all(req, -EIO);
 			continue;
 		}
-
-		sbd_transfer(&Device, 					/* Device Data */
-					blk_rq_pos(req),			/* Request Sector */
-					blk_rq_cur_sectors(req),	/* Number of sectors */
-					req->buffer, 				/* Buffer */
-					rq_data_dir(req)); 			/* Write */
-
-
-		/* Get next request */
+		sbd_transfer(&Device, blk_rq_pos(req), blk_rq_cur_sectors(req),
+				req->buffer, rq_data_dir(req));
 		if ( ! __blk_end_request_cur(req, 0) ) {
 			req = blk_fetch_request(q);
 		}
-
 	}
 }
 
@@ -188,15 +130,12 @@ static void sbd_request(struct request_queue *q) {
 int sbd_getgeo(struct block_device * block_device, struct hd_geometry * geo) {
 	long size;
 
-
 	/* We have no real geometry, of course, so make something up. */
 	size = Device.size * (logical_block_size / KERNEL_SECTOR_SIZE);
 	geo->cylinders = (size & ~0x3f) >> 6;
 	geo->heads = 4;
 	geo->sectors = 16;
 	geo->start = 0;
-
-
 	return 0;
 }
 
@@ -209,86 +148,37 @@ static struct block_device_operations sbd_ops = {
 };
 
 static int __init sbd_init(void) {
-	/* File I/O */
-	mm_segment_t oldfs;
-	struct file *filp = NULL;
-	unsigned long long offset = 0;
-	ssize_t size;
-
-
-	/* Register block device */
-	major_num = register_blkdev(major_num, "sbd");
-
-	/* Check if block device is busy */
-	if (major_num < 0) {
-		return -EBUSY;
-	}
-
-	/* Set up device and set the device to all 0s */
-	memset(&Device, 0, sizeof(struct sbd_device));
-	Device.size = nsectors * logical_block_size;
-	Device.data = vmalloc(Device.size);
-
-	memset(Device.data, 0, Device.size);
-
-	/* Check if device data is allocated */
-	if (Device.data == NULL) {
-		unregister_blkdev(major_num, "sbd");
-		return -ENOMEM;
-	}
-
-
-	/* Copy device data from a file. Create it too if it does not exist */
-	oldfs = get_fs();
-	set_fs(get_ds());
-	filp = filp_open("/Data", O_RDONLY | O_CREAT, S_IRWXUGO);
-
-
-	/* Check any errors or NULL from reading */
-	if (IS_ERR(filp)) {
-		set_fs(oldfs);
-	} else {
-
-		/* Read File */
-		size = vfs_read(filp, Device.data, Device.size, &offset);
-
-		/* Closed File */
-		set_fs(oldfs);
-		filp_close(filp, 0);
-	}
-
-	/* Initialize spin_lock */
-	spin_lock_init(&Device.lock);
-
-	/* Initialize queue and call sbd_request when requests come in */
-	Queue = blk_init_queue(sbd_request, &Device.lock);
-	if (Queue == NULL) {
-		unregister_blkdev(major_num, "sbd");
-		vfree(Device.data);
-		return -ENOMEM;
-	}
-
-	/* Set logical_block_size for queue */
-	blk_queue_logical_block_size(Queue, logical_block_size);
-
-	/* Initialize gendisk */
-	Device.gd = alloc_disk(16);
-	if (!Device.gd) {
-		unregister_blkdev(major_num, "sbd");
-		vfree(Device.data);
-		return -ENOMEM;
-	}
-
-	/* Initialize cypto and set key
-	 * ctrypto_alloc_cipher are: crypto driver name, type, and mask
-	 */
-	tfm = crypto_alloc_cipher("aes", 0, 0);
-
-    IS_ERR(tfm);
-
+	printk("sdbc.c: __init sdb_init starting\n");
 	
-
-	/* And The gendisk structure */
+	/*
+	 * Set up our internal device.
+	 */
+	Device.size = nsectors * logical_block_size;
+	spin_lock_init(&Device.lock);
+	Device.data = vmalloc(Device.size);
+	if (Device.data == NULL)
+		return -ENOMEM;
+	/*
+	 * Get a request queue.
+	 */
+	Queue = blk_init_queue(sbd_request, &Device.lock);
+	if (Queue == NULL)
+		goto out;
+	blk_queue_logical_block_size(Queue, logical_block_size);
+	/*
+	 * Get registered.
+	 */
+	major_num = register_blkdev(major_num, "sbd");
+	if (major_num < 0) {
+		printk(KERN_WARNING "sbd: unable to get major number\n");
+		goto out;
+	}
+	/*
+	 * And the gendisk structure.
+	 */
+	Device.gd = alloc_disk(16);
+	if (!Device.gd)
+		goto out_unregister;
 	Device.gd->major = major_num;
 	Device.gd->first_minor = 0;
 	Device.gd->fops = &sbd_ops;
@@ -296,49 +186,32 @@ static int __init sbd_init(void) {
 	strcpy(Device.gd->disk_name, "sbd0");
 	set_capacity(Device.gd, nsectors);
 	Device.gd->queue = Queue;
-
-	/* Register partition in Device.gd with kernel */
 	add_disk(Device.gd);
+	
+	printk("sdbc.c: __init sbd_init starting crypto setup\n");
+	
+	/* Alloc single block cipher */
+	tfm = crypto_alloc_cipher("aes", 0, 0);
+	
+	
 
 	return 0;
+
+out_unregister:
+	unregister_blkdev(major_num, "sbd");
+out:
+	vfree(Device.data);
+	return -ENOMEM;
 }
 
 static void __exit sbd_exit(void)
 {
-	struct file *filp = NULL;
-	mm_segment_t oldfs;
-	ssize_t size;
-	unsigned long long offset = 0;
-
-	/* First write data to file */
-	oldfs = get_fs();
-	set_fs(get_ds());
-	filp = filp_open("/Data", O_WRONLY | O_TRUNC | O_CREAT, S_IRWXUGO);
-
-	if (IS_ERR(filp)) {
-		set_fs(oldfs);
-	} else {
-
-		/* Write the bytes to file */
-		size = vfs_write(filp, Device.data, Device.size, &offset);
-
-		/* Close File */
-		set_fs(oldfs);
-		filp_close(filp, 0);
-	}
-
 	del_gendisk(Device.gd);
 	put_disk(Device.gd);
 	unregister_blkdev(major_num, "sbd");
 	blk_cleanup_queue(Queue);
 	vfree(Device.data);
-
-	crypto_free_cipher(tfm);
-
 }
 
 module_init(sbd_init);
 module_exit(sbd_exit);
-
-MODULE_AUTHOR("Nawwaf Almutairi, Gina Phipps, Brandon Thenell");
-MODULE_DESCRIPTION("Block Device Driver");
