@@ -33,7 +33,7 @@ module_param(logical_block_size, int, 0);
 static int nsectors = 1024; /* How big the drive is */
 module_param(nsectors, int, 0);
 
-static unsigned char aes_key = "666AE498AA62EDD1270B95CF05738766";
+static u8 aes_key = "11111111111111111111111111111111";
 static int aes_key_len = 32;
 struct crypto_cipher *tfm;
 
@@ -70,26 +70,35 @@ static void sbd_transfer(struct sbd_device *dev, sector_t sector,
 		printk (KERN_NOTICE "sbd: Beyond-end write (%ld %ld)\n", offset, nbytes);
 		return;
 	}
-	if (write)
-		//encrypt buffer here?
-		/* Functions:
-		 *		int crypto_register_alg(struct crypto_alg *alg);
-		 *		int crypto_register_algs(struct crypto_alg *algs, int count); (specifies that crypto_alg is an array of count size)
-		 * code < 0 = error
-		 * 
-		 * 
-		 * .cia_setkey() -> cia_encrypt()
-		 */
 	
-		memcpy(dev->data + offset, buffer, nbytes);
-	else
-		//decrypt buffer here?
-		/* Functions:
-		 *		int crypto_unregister_alg(struct crypto_alg *alg);
-		 *		int crypto_unregister_algs(struct crypto_alg *algs, int count);
-		 * code < 0 = error
-		 */
-		memcpy(buffer, dev->data + offset, nbytes);
+	if(crypto_cipher_setkey(tfm, &aes_key, aes_key_len) != 0) {
+		printk("sbdc.c: sbd_transfer setkey failed.\n");
+	}
+	
+	if (write) {
+		printk("sdbc.c: sbd_transfer starting an encrypted write.\n");
+		printk("sdbc.c: sbd_transfer unencrypted message:\n\t%s", buffer);
+		int i;
+		for(i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
+			crypto_cipher_encrypt_one(tfm, dev->data + offset + i, buffer + i);
+		}
+		printk("sdbc.c: sbd_transfer encrypted message:\n\t%s", dev->data);
+		
+	
+		//memcpy(dev->data + offset, buffer, nbytes);
+	}
+	else {
+		printk("sdbc.c: sbd_transfer starting an encrypted read.\n");
+		printk("sdbc.c: sbd_transfer encrypted message:\n\t%s", dev->data);
+		int i;
+		for(i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
+			crypto_cipher_dencrypt_one(tfm, buffer + i, dev->data + offset + i);
+		}
+		printk("sdbc.c: sbd_transfer decrypted message:\n\t%s", buffer);
+		
+		
+		//memcpy(buffer, dev->data + offset, nbytes);
+	}
 }
 
 static void sbd_request(struct request_queue *q) {
