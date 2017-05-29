@@ -1,0 +1,125 @@
+\documentclass[draftclsnofoot,onecolumn,10pt]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage{color}
+\usepackage{url}
+
+\usepackage{enumitem}
+
+\usepackage[letterpaper, margin=.75in]{geometry}
+
+\newcommand{\toc}{\tableofcontents}
+
+\usepackage{hyperref}
+\usepackage{listings}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\renewcommand{\lstlistingname}{Code Example} % a listing caption title.
+%\renewcommand{\lstlistlistingname}{List of \lstlistingname s} % list of lists -> list of Thread Program
+\lstset{
+    frame=single,
+    language=C,
+    columns=flexible,
+    numbers=left,
+    numbersep=5pt,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{dkgreen},
+    stringstyle=\color{mauve},
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=4,
+    captionpos=b
+}
+
+\def\name{Gina Phipps, Brandon Thenell, Nawwaf Almutairi}
+
+%% The following metadata will show up in the PDF properties
+\hypersetup{
+  colorlinks = false,
+  urlcolor = black,
+  pdfauthor = {\name},
+  pdfkeywords = {},
+  pdftitle = {},
+  pdfsubject = {},
+  pdfpagemode = UseNone
+}
+
+\parindent = 0.0 in
+\parskip = 0.1 in
+
+\begin{document}
+
+\begin{titlepage}
+\title{OS II Assignment 3}
+\author{CS444 - Spring 2017 \\ Gina Phipps, Brandon Thenell, Nawwaf Almutairi}
+\maketitle
+\begin{abstract}
+	This is assignment 3 for CS444. It's about 
+    creating a module for the RAM and adding encryption and 
+    decryption to it. We will be creating the module for the Linux kernel
+    and compiling it so the kernel will be using our module.
+\end{abstract}
+
+\thispagestyle{empty} % gets rid of the "0" page number.
+
+\end{titlepage}
+%\newpage
+
+\tableofcontents
+
+\newpage
+\section{RAM Driver Algorithm}
+Since the point of the assignment wasn't to write a RAM driver, we decided to utilize an open source driver that was already implemented in the Linux kernel, and then add encryption to it.  Basically, we needed to initialize variables to be used for the crypto operations, making things like the key be static and global, and then at the write operation do the encryption on the input before passing it to its destination, and then during a read decrypt the requested data before passing it to its destination.
+
+
+\section{QA}
+\subsection{Main Point of Assignment}
+The main point of this assignment is to implement features of an API that is poorly documented. It is knowned that the kernel crypto API has terribly documentation. It is also about implementing a cryptographic solution that goes below the level of the filesystem, much like dm-crypt. Our main job is to learn as much as we can about this poorly documented API and implement a working solution.
+
+
+\subsection{Design Decisions}
+For the RAM driver, we based it off of Pat Patterson's sbd.c (http://blog.superpat.com/2010/05/04/a-simple-block-driver-for-linux-kernel-2-6-31/). This was the simplest way for us to implement an sbd module, and it was under a GNU GPL license. From this, we just had to add encryption, and we wanted to go with the simplest method that we could, so we went with the crypto\_cipher\_encrypt\_one method (http://elixir.free-electrons.com/linux/latest/source/include/linux/crypto.h\#L1517), which is intended for plaintext.
+
+
+\subsection{How We Knew Our Solution Was Correct}
+We were able to test our solution by running it and reading the print statements, and by sending a simple statement to the mounted file we create. After that we can just echo the data from the file to show that it's been decrypted.
+
+\subsection{What Did We Learn}
+We learned how to modify existing existing Linux drivers, and impelment a driver that utilizes the crypto API.  Also, we learned that beautiful documentation can often exist, but you have to put quite a bit of effort into finding it.
+
+
+\section{Version Control Log}
+\begin{center}
+  \begin{tabular}{| p{0.3\linewidth} | p{0.3\linewidth} | p{0.3\linewidth} |}
+  	\hline User & Date & Commit \\
+  	\hline Vorhut & Sun May 21 & Finished concurrency3, might need light touchups \\
+  	\hline Vorhut &  Mon May 22 & Added Makefile \\
+  	\hline ginafish & Mon May 22 & Added sdbc.c (sdbc = crypto sdb, get it?)\\
+	\hline ginafish & Tue May 23 & Started adding crypto \\
+	\hline ginafish & Sun May 28 & Making key global and static. Still just getting started. \\
+	\hline Nawwaf & Sun May 28 & added Make file, and fixed some bugs with the sbd file \\
+	\hline Nawwaf & Sun May 28 & added instructions for running the program\\
+    \hline Nawwaf & Sun May 28 & adding the patch file\\
+    \hline ginafish & Mon May 29 & Possibly implemented.\\
+    \hline ginafish & Mon May 29 & Merge resolution\\
+    \hline ginafish & Mon May 29 & Overwrote old driver with new\\
+  \hline
+  \end{tabular}
+\end{center}
+
+
+\section{Work Log}
+Brandon did the concurrency, while Gina and Nawwaf worked on the driver, and all three of us worked on the write-up.
+
+
+\section{References}
+http://elixir.free-electrons.com/linux/latest/source/include/linux/crypto.h\#L1517
+
+http://blog.superpat.com/2010/05/04/a-simple-block-driver-for-linux-kernel-2-6-31/
+
+
+
+\end{document}
