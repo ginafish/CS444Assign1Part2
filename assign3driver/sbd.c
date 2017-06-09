@@ -35,7 +35,9 @@ static int nsectors = 1024; /* How big the drive is */
 module_param(nsectors, int, 0);
 
 static u8 *aes_key = "1111111111111111";
+module_param(key, charp, 0644);
 static int aes_key_len = 16;
+module_param(keylen, int, 0644);
 struct crypto_cipher *tfm;
 
 /*
@@ -384,6 +386,7 @@ static int __init sbd_init(void) {
 	/*
 	 * Get a request queue.
 	 */
+	printk("sdbc.c: __init sbd_init getting request queue\n");
 	Queue = blk_init_queue(sbd_request, &Device.lock);
 	if (Queue == NULL)
 		goto out;
@@ -391,6 +394,7 @@ static int __init sbd_init(void) {
 	/*
 	 * Get registered.
 	 */
+	printk("sdbc.c: __init sbd_init registering request queue\n");
 	major_num = register_blkdev(major_num, "sbd");
 	if (major_num < 0) {
 		printk(KERN_WARNING "sbd: unable to get major number\n");
@@ -399,6 +403,7 @@ static int __init sbd_init(void) {
 	/*
 	 * And the gendisk structure.
 	 */
+	printk("sdbc.c: __init sbd_init doing the gendisk structure\n");
 	Device.gd = alloc_disk(16);
 	if (!Device.gd)
 		goto out_unregister;
@@ -415,6 +420,12 @@ static int __init sbd_init(void) {
 	
 	/* Alloc single block cipher */
 	tfm = crypto_alloc_cipher("aes", 0, 0);
+	if(IS_ERR(tfm)) {
+		printk("%d", PTR_ERR(tfm));
+	} else {
+		printk("Allocated tfm fine.");
+	}
+	printk("sdbc.c: __init sbd_init block cipher size: %u\n", crypto_cipher_blocksize(tfm));
 	
 	
 
