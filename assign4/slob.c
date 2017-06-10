@@ -67,7 +67,8 @@
 #include <linux/rcupdate.h>
 #include <linux/list.h>
 #include <linux/kmemleak.h>
-
+#include <linux/syscalls.h>
+#include <linux/linkage.h>
 #include <trace/events/kmem.h>
 
 #include <linux/atomic.h>

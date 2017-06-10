@@ -9,20 +9,4 @@ cp /scratch/spring2017/files/core-image-lsb-sdk-qemux86.ext3 .
 qemu-system-i386 -nographic -kernel linux-yocto-3.14/arch/x86/boot/bzImage -drive file=core-image-lsb-sdk-qemux86.ext3 -enable-kvm -usb -localtime --no-reboot --append "root=/dev/hda rw console=ttyS0 debug"
 
 
-scp almutnaw@os-class.engr.oregonstate.edu:/scratch/spring2017/13-05/linux-yocto-3.14/drivers/block/sbd.ko /home/root
-
-
-insmod sbd.ko
-
-fdisk /dev/sbd0
-
-n
-p
-1
-
-w
-mkfs /dev/sbd0p1
-mkdir mnt 
-mount /dev/sbd0p1 /mnt
-echo Hi > /mnt/file1
-cat /mnt/file1
+scp almutnaw@os-class.engr.oregonstate.edu:/scratch/spring2017/13-05/test.c /home/root
